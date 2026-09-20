@@ -6,7 +6,9 @@
 #include <commctrl.h>
 #include <uxtheme.h>
 
+#include <algorithm>
 #include <string>
+#include <utility>
 
 namespace clipper
 {
@@ -49,6 +51,20 @@ void SetItemText(HWND list, int item, int subitem, const wchar_t* text)
                  reinterpret_cast<LPARAM>(&value));
 }
 
+void SetInfoTip(NMLVGETINFOTIPW& info, const Target& target)
+{
+    const std::wstring text = L"Class: " + target.window_class;
+    if (info.pszText == nullptr || info.cchTextMax <= 0)
+    {
+        return;
+    }
+
+    const size_t capacity = static_cast<size_t>(info.cchTextMax);
+    const size_t length = text.size() < capacity - 1 ? text.size() : capacity - 1;
+    std::copy_n(text.begin(), length, info.pszText);
+    info.pszText[length] = L'\0';
+}
+
 void RemoveRows(HWND list, size_t current_count, size_t wanted_count)
 {
     while (current_count > wanted_count)
@@ -63,15 +79,15 @@ void SetAvailableRow(HWND list, int row, const OpenWindow& window)
     const std::wstring process = FileName(window.target.executable_path);
     SetItemText(list, row, 0, window.title.c_str());
     SetItemText(list, row, 1, process.c_str());
-    SetItemText(list, row, 2, window.target.window_class.c_str());
-    SetItemText(list, row, 3, L"+");
+    SetItemText(list, row, 2, L"+");
 }
 
 void SetSavedRow(HWND list, int row, const Target& target)
 {
     const std::wstring process = FileName(target.executable_path);
-    SetItemText(list, row, 0, process.c_str());
-    SetItemText(list, row, 1, target.window_class.c_str());
+    const std::wstring label = target.label.empty() ? process : target.label;
+    SetItemText(list, row, 0, label.c_str());
+    SetItemText(list, row, 1, process.c_str());
     SetItemText(list, row, 2, L"x");
 }
 
@@ -84,7 +100,8 @@ HWND ListHeader(HWND list)
 
 void SettingsWindow::ConfigureList(HWND list, bool available)
 {
-    constexpr DWORD extended_style = LVS_EX_DOUBLEBUFFER | LVS_EX_FULLROWSELECT | LVS_EX_LABELTIP;
+    constexpr DWORD extended_style =
+        LVS_EX_DOUBLEBUFFER | LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_LABELTIP;
     SendMessageW(list, LVM_SETEXTENDEDLISTVIEWSTYLE, extended_style, extended_style);
     SendMessageW(list, LVM_SETBKCOLOR, 0, static_cast<LPARAM>(kBackground));
     SendMessageW(list, LVM_SETTEXTBKCOLOR, 0, static_cast<LPARAM>(kBackground));
@@ -96,15 +113,14 @@ void SettingsWindow::ConfigureList(HWND list, bool available)
     }
     if (available)
     {
-        InsertColumn(list, 0, L"Window", 300);
+        InsertColumn(list, 0, L"Window", 400);
         InsertColumn(list, 1, L"Process", 180);
-        InsertColumn(list, 2, L"Class", 150);
-        InsertColumn(list, 3, L"+", 36);
+        InsertColumn(list, 2, L"+", 36);
     }
     else
     {
-        InsertColumn(list, 0, L"Process", 300);
-        InsertColumn(list, 1, L"Class", 294);
+        InsertColumn(list, 0, L"Window", 400);
+        InsertColumn(list, 1, L"Process", 180);
         InsertColumn(list, 2, L"x", 36);
     }
 }
@@ -143,7 +159,8 @@ void SettingsWindow::Refresh()
     for (size_t index = 0; index < shared_targets; ++index)
     {
         if (saved_targets_[index].executable_path != targets[index].executable_path ||
-            saved_targets_[index].window_class != targets[index].window_class)
+            saved_targets_[index].window_class != targets[index].window_class ||
+            saved_targets_[index].label != targets[index].label)
         {
             SetSavedRow(saved_list_, static_cast<int>(index), targets[index]);
         }
@@ -183,6 +200,31 @@ LRESULT SettingsWindow::HandleNotify(NMHDR* notification)
         return 0;
     }
 
+    if (notification->code == LVN_GETINFOTIPW)
+    {
+        auto* info = reinterpret_cast<NMLVGETINFOTIPW*>(notification);
+        if (info->iItem < 0)
+        {
+            return 0;
+        }
+
+        const Target* target = nullptr;
+        const size_t item = static_cast<size_t>(info->iItem);
+        if (notification->hwndFrom == available_list_ && item < available_windows_.size())
+        {
+            target = &available_windows_[item].target;
+        }
+        else if (notification->hwndFrom == saved_list_ && item < saved_targets_.size())
+        {
+            target = &saved_targets_[item];
+        }
+        if (target != nullptr)
+        {
+            SetInfoTip(*info, *target);
+        }
+        return 0;
+    }
+
     if (notification->code == NM_CUSTOMDRAW)
     {
         const HWND available_header = ListHeader(available_list_);
@@ -212,7 +254,7 @@ LRESULT SettingsWindow::HandleNotify(NMHDR* notification)
         {
             draw->clrTextBk = (draw->nmcd.dwItemSpec % 2 == 0) ? kBackground : kCurrentLine;
             draw->clrText = kForeground;
-            if (notification->hwndFrom == available_list_ && draw->iSubItem == 3)
+            if (notification->hwndFrom == available_list_ && draw->iSubItem == 2)
             {
                 draw->clrText = kCyan;
             }
@@ -239,7 +281,7 @@ LRESULT SettingsWindow::HandleNotify(NMHDR* notification)
     {
         return 0;
     }
-    if (notification->hwndFrom == available_list_ && click->iSubItem == 3)
+    if (notification->hwndFrom == available_list_ && click->iSubItem == 2)
     {
         AddAvailableTarget(click->iItem);
     }
@@ -257,7 +299,10 @@ void SettingsWindow::AddAvailableTarget(int item)
         return;
     }
 
-    if (agent_->AddTarget(available_windows_[static_cast<size_t>(item)].target))
+    const OpenWindow& open_window = available_windows_[static_cast<size_t>(item)];
+    Target target = open_window.target;
+    target.label = open_window.title;
+    if (agent_->AddTarget(std::move(target)))
     {
         SetStatus(L"Target saved.");
     }

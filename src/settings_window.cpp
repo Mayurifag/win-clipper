@@ -127,11 +127,11 @@ void SettingsWindow::CreateControls()
         CreateControl(L"STATIC", L"Saved targets", SS_LEFTNOWORDWRAP, window_, 0, instance);
     saved_list_ = CreateList(window_, kSavedList, instance);
     hotkey_label_ = CreateControl(L"STATIC", L"Ctrl+Win+Enter toggles capture",
-                                  SS_RIGHT | SS_NOPREFIX, window_, 0, instance);
+                                  SS_RIGHT | SS_NOPREFIX | SS_ENDELLIPSIS, window_, 0, instance);
     startup_checkbox_ = CreateControl(L"BUTTON", L"Start with Windows",
                                       BS_AUTOCHECKBOX | WS_TABSTOP, window_, kStartup, instance);
-    blacklist_label_ =
-        CreateControl(L"STATIC", nullptr, SS_LEFT | SS_NOPREFIX, window_, 0, instance);
+    blacklist_label_ = CreateControl(L"STATIC", nullptr, SS_LEFT | SS_NOPREFIX | SS_ENDELLIPSIS,
+                                     window_, 0, instance);
     status_label_ =
         CreateControl(L"STATIC", L"Service ready.", SS_LEFT | SS_NOPREFIX, window_, 0, instance);
 
@@ -167,32 +167,41 @@ void SettingsWindow::Layout()
     const int left = margin;
     const int right = margin + column_width + gap;
 
-    MoveWindow(available_label_, left, margin, column_width, label_height, TRUE);
-    MoveWindow(saved_label_, right, margin, column_width, label_height, TRUE);
-    MoveWindow(available_list_, left, list_top, column_width, list_height, TRUE);
-    MoveWindow(saved_list_, right, list_top, column_width, list_height, TRUE);
+    const int list_visibility = column_width > 0 ? SW_SHOW : SW_HIDE;
+    for (const HWND control : {available_label_, available_list_, saved_label_, saved_list_})
+    {
+        ShowWindow(control, list_visibility);
+    }
+    MoveWindow(available_label_, left, margin, column_width, label_height, FALSE);
+    MoveWindow(saved_label_, right, margin, column_width, label_height, FALSE);
+    MoveWindow(available_list_, left, list_top, column_width, list_height, FALSE);
+    MoveWindow(saved_list_, right, list_top, column_width, list_height, FALSE);
 
     const int bottom_top = list_bottom + 12;
-    MoveWindow(startup_checkbox_, left, bottom_top, 180, 22, TRUE);
+    const int checkbox_width = content_width < 180 ? content_width : 180;
+    MoveWindow(startup_checkbox_, left, bottom_top, checkbox_width, 22, FALSE);
+    ShowWindow(startup_checkbox_, checkbox_width > 0 ? SW_SHOW : SW_HIDE);
     const int hotkey_width = content_width > 190 ? content_width - 190 : 0;
-    MoveWindow(hotkey_label_, left + 190, bottom_top, hotkey_width, 22, TRUE);
-    MoveWindow(blacklist_label_, left, bottom_top + 30, content_width, 38, TRUE);
-    MoveWindow(status_label_, left, bottom_top + 76, content_width, 22, TRUE);
+    MoveWindow(hotkey_label_, left + 190, bottom_top, hotkey_width, 22, FALSE);
+    ShowWindow(hotkey_label_, hotkey_width > 0 ? SW_SHOW : SW_HIDE);
+    MoveWindow(blacklist_label_, left, bottom_top + 30, content_width, 38, FALSE);
+    ShowWindow(blacklist_label_, content_width > 0 ? SW_SHOW : SW_HIDE);
+    MoveWindow(status_label_, left, bottom_top + 76, content_width, 22, FALSE);
+    ShowWindow(status_label_, content_width > 0 ? SW_SHOW : SW_HIDE);
 
-    const int available_width = column_width - 4 > 180 ? column_width - 4 : 180;
-    const int available_process = available_width * 28 / 100;
-    const int available_class = available_width * 22 / 100;
-    SetColumn(available_list_, 0,
-              available_width - kActionColumnWidth - available_process - available_class,
-              LVCFMT_LEFT);
-    SetColumn(available_list_, 1, available_process, LVCFMT_LEFT);
-    SetColumn(available_list_, 2, available_class, LVCFMT_LEFT);
-    SetColumn(available_list_, 3, kActionColumnWidth, LVCFMT_CENTER);
+    const int available_width = column_width > 4 ? column_width - 4 : 0;
+    const int action_width =
+        available_width < kActionColumnWidth ? available_width : kActionColumnWidth;
+    const int column_content_width = available_width - action_width;
+    const int process_width = column_content_width * 28 / 100;
+    const int window_width = column_content_width - process_width;
+    SetColumn(available_list_, 0, window_width, LVCFMT_LEFT);
+    SetColumn(available_list_, 1, process_width, LVCFMT_LEFT);
+    SetColumn(available_list_, 2, action_width, LVCFMT_CENTER);
 
-    const int saved_class = available_width * 35 / 100;
-    SetColumn(saved_list_, 0, available_width - kActionColumnWidth - saved_class, LVCFMT_LEFT);
-    SetColumn(saved_list_, 1, saved_class, LVCFMT_LEFT);
-    SetColumn(saved_list_, 2, kActionColumnWidth, LVCFMT_CENTER);
+    SetColumn(saved_list_, 0, window_width, LVCFMT_LEFT);
+    SetColumn(saved_list_, 1, process_width, LVCFMT_LEFT);
+    SetColumn(saved_list_, 2, action_width, LVCFMT_CENTER);
 }
 
 LRESULT CALLBACK SettingsWindow::WindowProc(HWND window, UINT message, WPARAM w_param,
@@ -220,14 +229,9 @@ LRESULT CALLBACK SettingsWindow::WindowProc(HWND window, UINT message, WPARAM w_
         return 0;
     case WM_SIZE:
         settings->Layout();
+        RedrawWindow(window, nullptr, nullptr,
+                     RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
         return 0;
-    case WM_GETMINMAXINFO:
-    {
-        auto* limits = reinterpret_cast<MINMAXINFO*>(l_param);
-        limits->ptMinTrackSize.x = 720;
-        limits->ptMinTrackSize.y = 440;
-        return 0;
-    }
     case WM_TIMER:
         if (w_param == kRefreshTimer)
         {

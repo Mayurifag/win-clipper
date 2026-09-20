@@ -261,9 +261,16 @@ bool LoadConfig(Config& config, const std::wstring& path)
             const size_t separator = value.find(L'\t');
             if (separator != std::wstring::npos)
             {
+                const size_t label_separator = value.find(L'\t', separator + 1);
                 AddTarget(config, Target{
                                       Unescape(value.substr(0, separator)),
-                                      Unescape(value.substr(separator + 1)),
+                                      Unescape(value.substr(separator + 1,
+                                                            label_separator == std::wstring::npos
+                                                                ? std::wstring::npos
+                                                                : label_separator - separator - 1)),
+                                      label_separator == std::wstring::npos
+                                          ? L""
+                                          : Unescape(value.substr(label_separator + 1)),
                                   });
             }
             continue;
@@ -309,7 +316,7 @@ bool SaveConfig(const Config& config, const std::wstring& path)
     {
         const Target normalized = NormalizeTarget(target);
         contents += L"target=" + Escape(normalized.executable_path) + L"\t" +
-                    Escape(normalized.window_class) + L"\n";
+                    Escape(normalized.window_class) + L"\t" + Escape(normalized.label) + L"\n";
     }
 
     for (const std::wstring& entry : config.blacklist)

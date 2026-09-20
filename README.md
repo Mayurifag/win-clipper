@@ -3,6 +3,8 @@
 Keeps the mouse cursor inside selected foreground windows. Runs without a tray icon.
 Useful for windowed games which don't do same thing for you.
 
+![WinClipper settings window](assets/win-clipper.webp)
+
 ## Usage
 
 Closing settings leaves agent running; run executable again to reopen them.

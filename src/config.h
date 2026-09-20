@@ -10,6 +10,7 @@ struct Target
 {
     std::wstring executable_path;
     std::wstring window_class;
+    std::wstring label;
 };
 
 struct Config

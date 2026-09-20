@@ -36,6 +36,26 @@ std::wstring ModulePath()
     }
 }
 
+void PopulateTargetLabels(Config& config)
+{
+    const std::vector<OpenWindow> windows = EnumerateOpenWindows(nullptr);
+    for (Target& target : config.targets)
+    {
+        if (!target.label.empty())
+        {
+            continue;
+        }
+
+        const auto match =
+            std::find_if(windows.begin(), windows.end(), [&](const OpenWindow& window)
+                         { return TargetMatches(target, window.target); });
+        if (match != windows.end() && !match->title.empty())
+        {
+            target.label = match->title;
+        }
+    }
+}
+
 } // namespace
 
 CaptureAgent::CaptureAgent(HINSTANCE instance) : instance_(instance) {}
@@ -60,6 +80,7 @@ bool CaptureAgent::Initialize()
     }
 
     current_ = this;
+    PopulateTargetLabels(config_);
     SaveConfig(config_, config_path_);
     clipper::SetStartWithWindows(config_.start_with_windows, executable_path_);
 

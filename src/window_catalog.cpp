@@ -122,6 +122,7 @@ bool DescribeWindow(HWND window, OpenWindow& result)
     result.target = NormalizeTarget(Target{
         std::move(executable_path),
         std::wstring(class_name.data(), static_cast<size_t>(class_length)),
+        {},
     });
     result.title = WindowTitle(window);
     return true;
