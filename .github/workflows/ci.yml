@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install LLVM tools
         shell: pwsh
@@ -57,7 +57,7 @@ jobs:
         run: cmake --build build --config Release --parallel
 
       - name: Upload executable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: win-clipper-x64
           path: build/Release/win-clipper.exe
