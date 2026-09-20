@@ -35,7 +35,7 @@ jobs:
       - name: Run Cppcheck
         shell: pwsh
         run: >-
-          cppcheck src
+          & "C:\Program Files\Cppcheck\cppcheck.exe" src
           --enable=warning,style,performance,portability
           --error-exitcode=1
           --inline-suppr
