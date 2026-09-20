@@ -17,12 +17,8 @@ struct Config
     bool start_with_windows = true;
     std::vector<Target> targets;
     std::vector<std::wstring> blacklist = {
-        L"explorer.exe",
-        L"pwsh.exe",
-        L"powertoys.quickaccess.exe",
-        L"steamwebhelper.exe",
-        L"textinputhost.exe",
-        L"windowsterminal.exe",
+        L"explorer.exe",       L"pwsh.exe",          L"powertoys.quickaccess.exe",
+        L"steamwebhelper.exe", L"textinputhost.exe", L"windowsterminal.exe",
     };
 };
 

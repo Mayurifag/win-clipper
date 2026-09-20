@@ -120,7 +120,8 @@ void SettingsWindow::Refresh()
         if (available_windows_[index].title != next_windows[index].title ||
             available_windows_[index].target.executable_path !=
                 next_windows[index].target.executable_path ||
-            available_windows_[index].target.window_class != next_windows[index].target.window_class)
+            available_windows_[index].target.window_class !=
+                next_windows[index].target.window_class)
         {
             SetAvailableRow(available_list_, static_cast<int>(index), next_windows[index]);
         }
@@ -137,8 +138,8 @@ void SettingsWindow::Refresh()
     available_windows_ = next_windows;
 
     const auto& targets = agent_->config().targets;
-    const size_t shared_targets = saved_targets_.size() < targets.size() ? saved_targets_.size()
-                                                                          : targets.size();
+    const size_t shared_targets =
+        saved_targets_.size() < targets.size() ? saved_targets_.size() : targets.size();
     for (size_t index = 0; index < shared_targets; ++index)
     {
         if (saved_targets_[index].executable_path != targets[index].executable_path ||

@@ -20,10 +20,10 @@ constexpr int kFooterHeight = 126;
 
 using settings_theme::BackgroundBrush;
 using settings_theme::kBackground;
-using settings_theme::kCyan;
-using settings_theme::kCurrentLine;
-using settings_theme::kForeground;
 using settings_theme::kComment;
+using settings_theme::kCurrentLine;
+using settings_theme::kCyan;
+using settings_theme::kForeground;
 
 HWND CreateControl(const wchar_t* class_name, const wchar_t* text, DWORD style, HWND parent, int id,
                    HINSTANCE instance)
@@ -130,10 +130,10 @@ void SettingsWindow::CreateControls()
                                   SS_RIGHT | SS_NOPREFIX, window_, 0, instance);
     startup_checkbox_ = CreateControl(L"BUTTON", L"Start with Windows",
                                       BS_AUTOCHECKBOX | WS_TABSTOP, window_, kStartup, instance);
-    blacklist_label_ = CreateControl(L"STATIC", nullptr, SS_LEFT | SS_NOPREFIX, window_, 0,
-                                     instance);
-    status_label_ = CreateControl(L"STATIC", L"Service ready.", SS_LEFT | SS_NOPREFIX, window_, 0,
-                                  instance);
+    blacklist_label_ =
+        CreateControl(L"STATIC", nullptr, SS_LEFT | SS_NOPREFIX, window_, 0, instance);
+    status_label_ =
+        CreateControl(L"STATIC", L"Service ready.", SS_LEFT | SS_NOPREFIX, window_, 0, instance);
 
     const HWND controls[] = {
         available_label_, available_list_,   saved_label_,     saved_list_,
@@ -196,7 +196,7 @@ void SettingsWindow::Layout()
 }
 
 LRESULT CALLBACK SettingsWindow::WindowProc(HWND window, UINT message, WPARAM w_param,
-                                             LPARAM l_param)
+                                            LPARAM l_param)
 {
     auto* settings = reinterpret_cast<SettingsWindow*>(GetWindowLongPtrW(window, GWLP_USERDATA));
     if (message == WM_NCCREATE)
@@ -263,11 +263,10 @@ LRESULT CALLBACK SettingsWindow::WindowProc(HWND window, UINT message, WPARAM w_
     {
         const HDC device_context = reinterpret_cast<HDC>(w_param);
         const HWND control = reinterpret_cast<HWND>(l_param);
-        const COLORREF text_color = control == settings->status_label_ ||
-                                            control == settings->blacklist_label_
-                                        ? kComment
-                                    : control == settings->hotkey_label_ ? kCyan
-                                                                         : kForeground;
+        const COLORREF text_color =
+            control == settings->status_label_ || control == settings->blacklist_label_ ? kComment
+            : control == settings->hotkey_label_                                        ? kCyan
+                                                 : kForeground;
         SetTextColor(device_context, text_color);
         SetBkColor(device_context, kBackground);
         return reinterpret_cast<LRESULT>(BackgroundBrush());

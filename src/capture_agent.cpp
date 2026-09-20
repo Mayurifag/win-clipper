@@ -119,7 +119,8 @@ std::vector<OpenWindow> CaptureAgent::OpenWindows() const
 {
     std::vector<OpenWindow> windows =
         EnumerateOpenWindows(settings_ == nullptr ? nullptr : settings_->window());
-    windows.erase(std::remove_if(windows.begin(), windows.end(), [&](const OpenWindow& window)
+    windows.erase(std::remove_if(windows.begin(), windows.end(),
+                                 [&](const OpenWindow& window)
                                  {
                                      if (IsBlacklisted(config_, window.target.executable_path))
                                      {
