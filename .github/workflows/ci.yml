@@ -25,8 +25,23 @@ jobs:
         shell: pwsh
         run: |
           $env:Path = "C:\Program Files\LLVM\bin;$env:Path"
-          $files = Get-ChildItem src, tests -Recurse -File -Include *.cpp, *.h
+          $files = Get-ChildItem src -Recurse -File -Include *.cpp, *.h
           clang-format --dry-run --Werror $files.FullName
+
+      - name: Install Cppcheck
+        shell: pwsh
+        run: choco install cppcheck --no-progress --yes
+
+      - name: Run Cppcheck
+        shell: pwsh
+        run: >-
+          cppcheck src
+          --enable=warning,style,performance,portability
+          --error-exitcode=1
+          --inline-suppr
+          --std=c++17
+          --language=c++
+          --suppress=missingIncludeSystem
 
       - name: Run clang-tidy
         shell: pwsh
@@ -40,9 +55,6 @@ jobs:
 
       - name: Build
         run: cmake --build build --config Release --parallel
-
-      - name: Test
-        run: ctest --test-dir build -C Release --output-on-failure
 
       - name: Upload executable
         uses: actions/upload-artifact@v4

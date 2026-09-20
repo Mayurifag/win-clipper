@@ -1,2 +1,2 @@
-Checks: '-*,bugprone-*,performance-*,readability-*'
+Checks: '-*,bugprone-*,performance-*,readability-*,misc-unused-using-decls,clang-analyzer-*'
 HeaderFilterRegex: 'src/.*'

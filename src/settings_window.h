@@ -43,7 +43,7 @@ class SettingsWindow
     void Refresh();
     void SetStatus(const wchar_t* text);
     LRESULT HandleNotify(NMHDR* notification);
-    void ConfigureList(HWND list, bool available);
+    static void ConfigureList(HWND list, bool available);
     void AddAvailableTarget(int item);
     void RemoveSavedTarget(int item);
 

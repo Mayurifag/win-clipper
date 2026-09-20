@@ -284,7 +284,8 @@ bool LoadConfig(Config& config, const std::wstring& path)
         }
     }
 
-    for (const std::wstring& entry : Config{}.blacklist)
+    const Config defaults;
+    for (const std::wstring& entry : defaults.blacklist)
     {
         const std::wstring normalized_entry = NormalizeValue(FileName(entry));
         if (std::none_of(config.blacklist.begin(), config.blacklist.end(),
