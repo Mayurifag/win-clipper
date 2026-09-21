@@ -6,6 +6,7 @@ namespace clipper
 {
 void CaptureAgent::UpdateForegroundTarget()
 {
+    moving_active_window_ = false;
     active_window_ = nullptr;
     if (!capture_enabled_)
     {
@@ -37,26 +38,19 @@ void CaptureAgent::UpdateClipRect()
         return;
     }
 
-    RECT client{};
-    if (!GetClientRect(active_window_, &client))
+    RECT window_rect{};
+    if (!GetWindowRect(active_window_, &window_rect))
     {
         return;
     }
 
-    POINT top_left{client.left, client.top};
-    POINT bottom_right{client.right, client.bottom};
-    if (!ClientToScreen(active_window_, &top_left) ||
-        !ClientToScreen(active_window_, &bottom_right))
-    {
-        return;
-    }
-
-    clip_rect_ = {top_left.x, top_left.y, bottom_right.x, bottom_right.y};
+    clip_rect_ = window_rect;
 }
 
 void CaptureAgent::ApplyClip()
 {
     const bool can_clip = capture_enabled_ && active_window_ != nullptr &&
+                          !moving_active_window_ &&
                           IsWindow(active_window_) && !IsIconic(active_window_) &&
                           GetForegroundWindow() == active_window_ &&
                           clip_rect_.right > clip_rect_.left && clip_rect_.bottom > clip_rect_.top;
@@ -83,17 +77,43 @@ LRESULT CALLBACK CaptureAgent::MouseHookProc(int code, WPARAM w_param, LPARAM l_
 void CALLBACK CaptureAgent::WinEventProc(HWINEVENTHOOK, DWORD event, HWND window, LONG object_id,
                                          LONG child_id, DWORD, DWORD)
 {
-    if (current_ == nullptr ||
-        (event != EVENT_SYSTEM_FOREGROUND && event != EVENT_OBJECT_LOCATIONCHANGE) ||
-        object_id != OBJID_WINDOW || child_id != CHILDID_SELF)
+    if (current_ == nullptr)
     {
         return;
     }
 
-    if (event == EVENT_OBJECT_LOCATIONCHANGE && window != current_->active_window_)
+    if (event == EVENT_SYSTEM_MOVESIZESTART || event == EVENT_SYSTEM_MOVESIZEEND)
+    {
+        if (window != current_->active_window_)
+        {
+            return;
+        }
+
+        if (event == EVENT_SYSTEM_MOVESIZESTART)
+        {
+            current_->moving_active_window_ = true;
+            current_->ReleaseClip();
+        }
+        else
+        {
+            current_->moving_active_window_ = false;
+            current_->UpdateForegroundTarget();
+        }
+        return;
+    }
+
+    if (event == EVENT_OBJECT_LOCATIONCHANGE &&
+        (object_id != OBJID_WINDOW || child_id != CHILDID_SELF ||
+         window != current_->active_window_ || current_->moving_active_window_))
     {
         return;
     }
+
+    if (event != EVENT_SYSTEM_FOREGROUND && event != EVENT_OBJECT_LOCATIONCHANGE)
+    {
+        return;
+    }
+
     current_->UpdateForegroundTarget();
 }
 

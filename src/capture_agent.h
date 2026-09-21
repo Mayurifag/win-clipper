@@ -67,6 +67,7 @@ class CaptureAgent
     HWND active_window_ = nullptr;
     RECT clip_rect_{};
     bool capture_enabled_ = true;
+    bool moving_active_window_ = false;
     bool stopping_ = false;
     Config config_;
     std::wstring config_path_;
