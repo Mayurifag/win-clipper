@@ -49,11 +49,11 @@ void CaptureAgent::UpdateClipRect()
 
 void CaptureAgent::ApplyClip()
 {
-    const bool can_clip = capture_enabled_ && active_window_ != nullptr &&
-                          !moving_active_window_ &&
-                          IsWindow(active_window_) && !IsIconic(active_window_) &&
-                          GetForegroundWindow() == active_window_ &&
-                          clip_rect_.right > clip_rect_.left && clip_rect_.bottom > clip_rect_.top;
+    const bool can_clip =
+        capture_enabled_ && active_window_ != nullptr && !moving_active_window_ &&
+        IsWindow(active_window_) && !IsIconic(active_window_) &&
+        GetForegroundWindow() == active_window_ &&
+        clip_rect_.right > clip_rect_.left && clip_rect_.bottom > clip_rect_.top;
     ClipCursor(can_clip ? &clip_rect_ : nullptr);
 }
 
