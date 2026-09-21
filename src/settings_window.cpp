@@ -307,7 +307,7 @@ LRESULT CALLBACK SettingsWindow::WindowProc(HWND window, UINT message, WPARAM w_
         const HWND control = reinterpret_cast<HWND>(l_param);
         const COLORREF text_color =
             control == settings->status_label_ || control == settings->blacklist_label_ ? kComment
-            : control == settings->hotkey_label_                                        ? kCyan
+            : control == settings->hotkey_label_ ? kCyan
                                                  : kForeground;
         SetTextColor(device_context, text_color);
         SetBkColor(device_context, kBackground);
