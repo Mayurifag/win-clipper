@@ -6,7 +6,6 @@
 
 namespace clipper
 {
-
 std::wstring NormalizeValue(std::wstring value)
 {
     while (value.size() >= 2 && value.front() == L'"' && value.back() == L'"')

@@ -57,7 +57,6 @@ class SettingsWindow
     HWND startup_checkbox_ = nullptr;
     HWND blacklist_label_ = nullptr;
     HWND status_label_ = nullptr;
-    HFONT font_ = nullptr;
     std::vector<OpenWindow> available_windows_;
     std::vector<Target> saved_targets_;
 };

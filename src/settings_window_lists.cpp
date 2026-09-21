@@ -4,6 +4,7 @@
 #include "settings_theme.h"
 
 #include <commctrl.h>
+#include <shellapi.h>
 #include <uxtheme.h>
 
 #include <algorithm>
@@ -20,6 +21,42 @@ using settings_theme::kCurrentLine;
 using settings_theme::kCyan;
 using settings_theme::kForeground;
 using settings_theme::kPink;
+
+int Scale(int value, HWND window)
+{
+    const UINT dpi = GetDpiForWindow(window);
+    return MulDiv(value, static_cast<int>(dpi == 0 ? USER_DEFAULT_SCREEN_DPI : dpi),
+                  USER_DEFAULT_SCREEN_DPI);
+}
+
+HIMAGELIST SystemImageList()
+{
+    static const HIMAGELIST image_list = []
+    {
+        SHFILEINFOW file_info{};
+        const DWORD_PTR result =
+            SHGetFileInfoW(L"WinClipper.exe", FILE_ATTRIBUTE_NORMAL, &file_info, sizeof(file_info),
+                           SHGFI_SYSICONINDEX | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBUTES);
+        return reinterpret_cast<HIMAGELIST>(result);
+    }();
+    return image_list;
+}
+
+int ApplicationIconIndex(const std::wstring& executable_path)
+{
+    SHFILEINFOW file_info{};
+    const UINT flags = SHGFI_SYSICONINDEX | SHGFI_SMALLICON;
+    DWORD_PTR result =
+        executable_path.empty()
+            ? 0
+            : SHGetFileInfoW(executable_path.c_str(), 0, &file_info, sizeof(file_info), flags);
+    if (result == 0)
+    {
+        result = SHGetFileInfoW(L"WinClipper.exe", FILE_ATTRIBUTE_NORMAL, &file_info,
+                                sizeof(file_info), flags | SHGFI_USEFILEATTRIBUTES);
+    }
+    return result == 0 ? 0 : file_info.iIcon;
+}
 
 void InsertColumn(HWND list, int index, const wchar_t* text, int width)
 {
@@ -51,6 +88,15 @@ void SetItemText(HWND list, int item, int subitem, const wchar_t* text)
                  reinterpret_cast<LPARAM>(&value));
 }
 
+void SetItemImage(HWND list, int item, const std::wstring& executable_path)
+{
+    LVITEMW value{};
+    value.mask = LVIF_IMAGE;
+    value.iItem = item;
+    value.iImage = ApplicationIconIndex(executable_path);
+    SendMessageW(list, LVM_SETITEMW, 0, reinterpret_cast<LPARAM>(&value));
+}
+
 void SetInfoTip(NMLVGETINFOTIPW& info, const Target& target)
 {
     const std::wstring text = L"Class: " + target.window_class;
@@ -60,7 +106,7 @@ void SetInfoTip(NMLVGETINFOTIPW& info, const Target& target)
     }
 
     const size_t capacity = static_cast<size_t>(info.cchTextMax);
-    const size_t length = text.size() < capacity - 1 ? text.size() : capacity - 1;
+    const size_t length = (std::min)(text.size(), capacity - 1);
     std::copy_n(text.begin(), length, info.pszText);
     info.pszText[length] = L'\0';
 }
@@ -77,6 +123,7 @@ void RemoveRows(HWND list, size_t current_count, size_t wanted_count)
 void SetAvailableRow(HWND list, int row, const OpenWindow& window)
 {
     const std::wstring process = FileName(window.target.executable_path);
+    SetItemImage(list, row, window.target.executable_path);
     SetItemText(list, row, 0, window.title.c_str());
     SetItemText(list, row, 1, process.c_str());
     SetItemText(list, row, 2, L"+");
@@ -86,14 +133,10 @@ void SetSavedRow(HWND list, int row, const Target& target)
 {
     const std::wstring process = FileName(target.executable_path);
     const std::wstring label = target.label.empty() ? process : target.label;
+    SetItemImage(list, row, target.executable_path);
     SetItemText(list, row, 0, label.c_str());
     SetItemText(list, row, 1, process.c_str());
     SetItemText(list, row, 2, L"x");
-}
-
-HWND ListHeader(HWND list)
-{
-    return reinterpret_cast<HWND>(SendMessageW(list, LVM_GETHEADER, 0, 0));
 }
 
 } // namespace
@@ -106,31 +149,21 @@ void SettingsWindow::ConfigureList(HWND list, bool available)
     SendMessageW(list, LVM_SETBKCOLOR, 0, static_cast<LPARAM>(kBackground));
     SendMessageW(list, LVM_SETTEXTBKCOLOR, 0, static_cast<LPARAM>(kBackground));
     SendMessageW(list, LVM_SETTEXTCOLOR, 0, static_cast<LPARAM>(kForeground));
-    const HWND header = ListHeader(list);
+    ListView_SetImageList(list, SystemImageList(), LVSIL_SMALL);
+    const HWND header = ListView_GetHeader(list);
     if (header != nullptr)
     {
         SetWindowTheme(header, L"", L"");
     }
-    if (available)
-    {
-        InsertColumn(list, 0, L"Window", 400);
-        InsertColumn(list, 1, L"Process", 180);
-        InsertColumn(list, 2, L"+", 36);
-    }
-    else
-    {
-        InsertColumn(list, 0, L"Window", 400);
-        InsertColumn(list, 1, L"Process", 180);
-        InsertColumn(list, 2, L"x", 36);
-    }
+    InsertColumn(list, 0, L"Window", Scale(400, list));
+    InsertColumn(list, 1, L"Process", Scale(180, list));
+    InsertColumn(list, 2, available ? L"+" : L"x", Scale(36, list));
 }
 
 void SettingsWindow::Refresh()
 {
     const std::vector<OpenWindow> next_windows = agent_->OpenWindows();
-    const size_t shared_windows = available_windows_.size() < next_windows.size()
-                                      ? available_windows_.size()
-                                      : next_windows.size();
+    const size_t shared_windows = (std::min)(available_windows_.size(), next_windows.size());
     for (size_t index = 0; index < shared_windows; ++index)
     {
         if (available_windows_[index].title != next_windows[index].title ||
@@ -154,8 +187,7 @@ void SettingsWindow::Refresh()
     available_windows_ = next_windows;
 
     const auto& targets = agent_->config().targets;
-    const size_t shared_targets =
-        saved_targets_.size() < targets.size() ? saved_targets_.size() : targets.size();
+    const size_t shared_targets = (std::min)(saved_targets_.size(), targets.size());
     for (size_t index = 0; index < shared_targets; ++index)
     {
         if (saved_targets_[index].executable_path != targets[index].executable_path ||
@@ -227,8 +259,8 @@ LRESULT SettingsWindow::HandleNotify(NMHDR* notification)
 
     if (notification->code == NM_CUSTOMDRAW)
     {
-        const HWND available_header = ListHeader(available_list_);
-        const HWND saved_header = ListHeader(saved_list_);
+        const HWND available_header = ListView_GetHeader(available_list_);
+        const HWND saved_header = ListView_GetHeader(saved_list_);
         if (notification->hwndFrom == available_header || notification->hwndFrom == saved_header)
         {
             auto* header = reinterpret_cast<NMCUSTOMDRAW*>(notification);
@@ -315,14 +347,14 @@ void SettingsWindow::AddAvailableTarget(int item)
 
 void SettingsWindow::RemoveSavedTarget(int item)
 {
-    const bool deletes_service = agent_->config().targets.size() == 1;
+    const bool removes_final_target = agent_->config().targets.size() == 1;
     if (item < 0 || !agent_->RemoveTargetAt(static_cast<size_t>(item)))
     {
         SetStatus(L"Target could not be removed.");
         return;
     }
 
-    SetStatus(deletes_service ? L"Service deleted." : L"Target removed.");
+    SetStatus(removes_final_target ? L"No targets saved." : L"Target removed.");
     Refresh();
 }
 

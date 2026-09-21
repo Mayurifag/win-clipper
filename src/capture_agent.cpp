@@ -17,6 +17,12 @@ namespace
 
 constexpr int kHotkeyId = 1;
 
+void ShowSettingsError()
+{
+    MessageBoxW(nullptr, L"WinClipper could not open its settings window.", L"WinClipper",
+                MB_OK | MB_ICONERROR);
+}
+
 std::wstring ModulePath()
 {
     std::vector<wchar_t> buffer(512);
@@ -84,13 +90,6 @@ bool CaptureAgent::Initialize()
     SaveConfig(config_, config_path_);
     clipper::SetStartWithWindows(config_.start_with_windows, executable_path_);
 
-    settings_ = std::make_unique<SettingsWindow>();
-    if (!settings_->Create(*this))
-    {
-        Stop();
-        return false;
-    }
-
     mouse_hook_ = SetWindowsHookExW(WH_MOUSE_LL, MouseHookProc, nullptr, 0);
     event_hook_ =
         SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_OBJECT_LOCATIONCHANGE, nullptr, WinEventProc,
@@ -102,9 +101,10 @@ bool CaptureAgent::Initialize()
 
 int CaptureAgent::Run(bool show_settings)
 {
-    if (show_settings)
+    if (show_settings && !ShowSettings())
     {
-        ShowSettings();
+        ShowSettingsError();
+        return 1;
     }
 
     MSG message{};
@@ -116,7 +116,7 @@ int CaptureAgent::Run(bool show_settings)
     return static_cast<int>(message.wParam);
 }
 
-void CaptureAgent::ShowSettings()
+bool CaptureAgent::ShowSettings()
 {
     if (settings_ == nullptr)
     {
@@ -125,9 +125,10 @@ void CaptureAgent::ShowSettings()
     if (settings_->window() == nullptr && !settings_->Create(*this))
     {
         settings_.reset();
-        return;
+        return false;
     }
     settings_->Show();
+    return true;
 }
 
 void CaptureAgent::ToggleCapture()
@@ -280,7 +281,10 @@ LRESULT CALLBACK CaptureAgent::WindowProc(HWND window, UINT message, WPARAM w_pa
     switch (message)
     {
     case kShowSettingsMessage:
-        agent->ShowSettings();
+        if (!agent->ShowSettings())
+        {
+            ShowSettingsError();
+        }
         return 0;
     case WM_HOTKEY:
         if (w_param == kHotkeyId)

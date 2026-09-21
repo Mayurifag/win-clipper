@@ -12,7 +12,7 @@ Config: `%APPDATA%\WinClipper\config.txt`.
 
 ## Limits
 
-- Agent runs in interactive user session, not as an SCM Windows service.
+- Agent runs in interactive user session.
 - Protected applications and anti-cheat systems may block or reject its user-mode hooks (not tested at all)
 - Ignored by default: `explorer.exe`, `pwsh.exe`,
 `powertoys.quickaccess.exe`, `steamwebhelper.exe`, `textinputhost.exe`, and

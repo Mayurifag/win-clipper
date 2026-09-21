@@ -27,7 +27,7 @@ class CaptureAgent
 
     bool Initialize();
     int Run(bool show_settings);
-    void ShowSettings();
+    bool ShowSettings();
     void ToggleCapture();
 
     HINSTANCE instance() const

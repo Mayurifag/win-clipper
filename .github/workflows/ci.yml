@@ -15,25 +15,21 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install LLVM tools
-        shell: pwsh
         run: |
           choco install llvm --no-progress --yes
           $env:Path = "C:\Program Files\LLVM\bin;$env:Path"
           clang-format --version
 
       - name: Check formatting
-        shell: pwsh
         run: |
           $env:Path = "C:\Program Files\LLVM\bin;$env:Path"
           $files = Get-ChildItem src -Recurse -File -Include *.cpp, *.h
           clang-format --dry-run --Werror $files.FullName
 
       - name: Install Cppcheck
-        shell: pwsh
         run: choco install cppcheck --no-progress --yes
 
       - name: Run Cppcheck
-        shell: pwsh
         run: >-
           & "C:\Program Files\Cppcheck\cppcheck.exe" src
           --enable=warning,style,performance,portability
@@ -44,7 +40,6 @@ jobs:
           --suppress=missingIncludeSystem
 
       - name: Run clang-tidy
-        shell: pwsh
         run: |
           $env:Path = "C:\Program Files\LLVM\bin;$env:Path"
           cmake -S . -B build-tidy -G "Visual Studio 17 2022" -A x64 -DCMAKE_CXX_CLANG_TIDY=clang-tidy
@@ -76,7 +71,6 @@ jobs:
           path: release
 
       - name: Create release
-        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-

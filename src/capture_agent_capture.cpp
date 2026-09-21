@@ -4,16 +4,6 @@
 
 namespace clipper
 {
-namespace
-{
-
-bool IsValidRect(const RECT& rect)
-{
-    return rect.right > rect.left && rect.bottom > rect.top;
-}
-
-} // namespace
-
 void CaptureAgent::UpdateForegroundTarget()
 {
     active_window_ = nullptr;
@@ -66,16 +56,11 @@ void CaptureAgent::UpdateClipRect()
 
 void CaptureAgent::ApplyClip()
 {
-    if (capture_enabled_ && active_window_ != nullptr && IsWindow(active_window_) &&
-        !IsIconic(active_window_) && GetForegroundWindow() == active_window_ &&
-        IsValidRect(clip_rect_))
-    {
-        ClipCursor(&clip_rect_);
-    }
-    else
-    {
-        ClipCursor(nullptr);
-    }
+    const bool can_clip = capture_enabled_ && active_window_ != nullptr &&
+                          IsWindow(active_window_) && !IsIconic(active_window_) &&
+                          GetForegroundWindow() == active_window_ &&
+                          clip_rect_.right > clip_rect_.left && clip_rect_.bottom > clip_rect_.top;
+    ClipCursor(can_clip ? &clip_rect_ : nullptr);
 }
 
 void CaptureAgent::ReleaseClip()

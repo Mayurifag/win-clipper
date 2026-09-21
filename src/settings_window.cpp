@@ -8,6 +8,8 @@
 #include <dwmapi.h>
 #include <uxtheme.h>
 
+#include <algorithm>
+
 namespace clipper
 {
 namespace
@@ -24,6 +26,17 @@ using settings_theme::kComment;
 using settings_theme::kCurrentLine;
 using settings_theme::kCyan;
 using settings_theme::kForeground;
+
+int Scale(int value, UINT dpi)
+{
+    return MulDiv(value, static_cast<int>(dpi), USER_DEFAULT_SCREEN_DPI);
+}
+
+UINT WindowDpi(HWND window)
+{
+    const UINT dpi = GetDpiForWindow(window);
+    return dpi == 0 ? USER_DEFAULT_SCREEN_DPI : dpi;
+}
 
 HWND CreateControl(const wchar_t* class_name, const wchar_t* text, DWORD style, HWND parent, int id,
                    HINSTANCE instance)
@@ -96,7 +109,8 @@ bool SettingsWindow::Create(CaptureAgent& agent)
     window_ = CreateWindowExW(
         WS_EX_APPWINDOW, kSettingsWindowClass, L"WinClipper",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME, CW_USEDEFAULT,
-        CW_USEDEFAULT, 820, 520, agent.window(), nullptr, agent.instance(), this);
+        CW_USEDEFAULT, Scale(820, GetDpiForSystem()), Scale(520, GetDpiForSystem()), agent.window(),
+        nullptr, agent.instance(), this);
     return window_ != nullptr;
 }
 
@@ -116,7 +130,7 @@ void SettingsWindow::Show()
 
 void SettingsWindow::CreateControls()
 {
-    font_ = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
+    const HFONT font = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
     const HINSTANCE instance =
         reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(window_, GWLP_HINSTANCE));
 
@@ -133,7 +147,7 @@ void SettingsWindow::CreateControls()
     blacklist_label_ = CreateControl(L"STATIC", nullptr, SS_LEFT | SS_NOPREFIX | SS_ENDELLIPSIS,
                                      window_, 0, instance);
     status_label_ =
-        CreateControl(L"STATIC", L"Service ready.", SS_LEFT | SS_NOPREFIX, window_, 0, instance);
+        CreateControl(L"STATIC", L"Agent ready.", SS_LEFT | SS_NOPREFIX, window_, 0, instance);
 
     const HWND controls[] = {
         available_label_, available_list_,   saved_label_,     saved_list_,
@@ -141,7 +155,7 @@ void SettingsWindow::CreateControls()
     };
     for (const HWND control : controls)
     {
-        SetFont(control, font_);
+        SetFont(control, font);
     }
     ConfigureList(available_list_, true);
     ConfigureList(saved_list_, false);
@@ -156,14 +170,18 @@ void SettingsWindow::Layout()
     GetClientRect(window_, &client);
     const int width = client.right - client.left;
     const int height = client.bottom - client.top;
-    constexpr int margin = 14;
-    constexpr int gap = 14;
-    constexpr int label_height = 22;
+    const UINT dpi = WindowDpi(window_);
+    const int margin = Scale(14, dpi);
+    const int gap = Scale(14, dpi);
+    const int label_height = Scale(22, dpi);
     const int content_width = width > margin * 2 ? width - margin * 2 : 0;
     const int column_width = content_width > gap ? (content_width - gap) / 2 : 0;
     const int list_top = margin + label_height;
-    const int list_bottom = height - kFooterHeight;
-    const int list_height = list_bottom - list_top > 120 ? list_bottom - list_top : 120;
+    const int footer_height = Scale(kFooterHeight, dpi);
+    const int list_bottom = height - footer_height;
+    const int minimum_list_height = Scale(120, dpi);
+    const int list_height =
+        list_bottom - list_top > minimum_list_height ? list_bottom - list_top : minimum_list_height;
     const int left = margin;
     const int right = margin + column_width + gap;
 
@@ -177,22 +195,27 @@ void SettingsWindow::Layout()
     MoveWindow(available_list_, left, list_top, column_width, list_height, FALSE);
     MoveWindow(saved_list_, right, list_top, column_width, list_height, FALSE);
 
-    const int bottom_top = list_bottom + 12;
-    const int checkbox_width = content_width < 180 ? content_width : 180;
-    MoveWindow(startup_checkbox_, left, bottom_top, checkbox_width, 22, FALSE);
+    const int row_height = Scale(22, dpi);
+    const int bottom_top = list_bottom + Scale(12, dpi);
+    const int checkbox_width = (std::min)(content_width, Scale(180, dpi));
+    MoveWindow(startup_checkbox_, left, bottom_top, checkbox_width, row_height, FALSE);
     ShowWindow(startup_checkbox_, checkbox_width > 0 ? SW_SHOW : SW_HIDE);
-    const int hotkey_width = content_width > 190 ? content_width - 190 : 0;
-    MoveWindow(hotkey_label_, left + 190, bottom_top, hotkey_width, 22, FALSE);
+    const int hotkey_label_offset = Scale(190, dpi);
+    const int hotkey_width =
+        content_width > hotkey_label_offset ? content_width - hotkey_label_offset : 0;
+    MoveWindow(hotkey_label_, left + hotkey_label_offset, bottom_top, hotkey_width, row_height,
+               FALSE);
     ShowWindow(hotkey_label_, hotkey_width > 0 ? SW_SHOW : SW_HIDE);
-    MoveWindow(blacklist_label_, left, bottom_top + 30, content_width, 38, FALSE);
+    MoveWindow(blacklist_label_, left, bottom_top + Scale(30, dpi), content_width, Scale(38, dpi),
+               FALSE);
     ShowWindow(blacklist_label_, content_width > 0 ? SW_SHOW : SW_HIDE);
-    MoveWindow(status_label_, left, bottom_top + 76, content_width, 22, FALSE);
+    MoveWindow(status_label_, left, bottom_top + Scale(76, dpi), content_width, row_height, FALSE);
     ShowWindow(status_label_, content_width > 0 ? SW_SHOW : SW_HIDE);
 
-    const int available_width = column_width > 4 ? column_width - 4 : 0;
-    const int action_width =
-        available_width < kActionColumnWidth ? available_width : kActionColumnWidth;
-    const int column_content_width = available_width - action_width;
+    const int list_padding = Scale(4, dpi);
+    const int available_width = column_width > list_padding ? column_width - list_padding : 0;
+    const int action_width = (std::min)(available_width, Scale(kActionColumnWidth, dpi));
+    const int column_content_width = (std::max)(0, available_width - action_width);
     const int process_width = column_content_width * 28 / 100;
     const int window_width = column_content_width - process_width;
     SetColumn(available_list_, 0, window_width, LVCFMT_LEFT);
@@ -232,6 +255,18 @@ LRESULT CALLBACK SettingsWindow::WindowProc(HWND window, UINT message, WPARAM w_
         RedrawWindow(window, nullptr, nullptr,
                      RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
         return 0;
+    case WM_DPICHANGED:
+    {
+        const auto* suggested = reinterpret_cast<const RECT*>(l_param);
+        if (suggested != nullptr)
+        {
+            SetWindowPos(window, nullptr, suggested->left, suggested->top,
+                         suggested->right - suggested->left, suggested->bottom - suggested->top,
+                         SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        settings->Layout();
+        return 0;
+    }
     case WM_TIMER:
         if (w_param == kRefreshTimer)
         {
@@ -247,10 +282,13 @@ LRESULT CALLBACK SettingsWindow::WindowProc(HWND window, UINT message, WPARAM w_
         const HDC device_context = BeginPaint(window, &paint);
         RECT client{};
         GetClientRect(window, &client);
+        const UINT dpi = WindowDpi(window);
+        const int margin = Scale(14, dpi);
+        const int footer_height = Scale(kFooterHeight, dpi);
         HPEN separator = CreatePen(PS_SOLID, 1, kCurrentLine);
         const HGDIOBJ previous = SelectObject(device_context, separator);
-        MoveToEx(device_context, 14, client.bottom - kFooterHeight, nullptr);
-        LineTo(device_context, client.right - 14, client.bottom - kFooterHeight);
+        MoveToEx(device_context, margin, client.bottom - footer_height, nullptr);
+        LineTo(device_context, client.right - margin, client.bottom - footer_height);
         SelectObject(device_context, previous);
         DeleteObject(separator);
         EndPaint(window, &paint);

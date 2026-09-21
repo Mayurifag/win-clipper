@@ -10,16 +10,11 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
-add_library(clipper_core
-    src/config.cpp
-    src/config_storage.cpp
-)
-
-target_include_directories(clipper_core PUBLIC src)
-
 add_executable(win-clipper WIN32
     src/capture_agent.cpp
     src/capture_agent_capture.cpp
+    src/config.cpp
+    src/config_storage.cpp
     src/main.cpp
     src/resources.rc
     src/settings_window.cpp
@@ -28,16 +23,19 @@ add_executable(win-clipper WIN32
     src/window_catalog.cpp
 )
 
+target_include_directories(win-clipper PRIVATE src)
+
 target_link_libraries(win-clipper PRIVATE
-    clipper_core
     advapi32
     comctl32
     dwmapi
+    shell32
     user32
     uxtheme
 )
 
-target_compile_definitions(win-clipper PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_definitions(win-clipper PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX
+    WINVER=0x0A00 _WIN32_WINNT=0x0A00)
 
 if(MSVC)
     target_compile_options(win-clipper PRIVATE /W4 /WX /permissive-)

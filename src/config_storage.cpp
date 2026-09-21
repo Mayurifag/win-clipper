@@ -3,6 +3,7 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <filesystem>
 #include <sstream>
 
 namespace clipper
@@ -213,14 +214,9 @@ std::wstring ConfigPath()
         base = L".";
     }
 
-    while (!base.empty() && (base.back() == L'\\' || base.back() == L'/'))
-    {
-        base.pop_back();
-    }
-
-    const std::wstring directory = base + L"\\" + kConfigDirectory;
+    const std::filesystem::path directory = std::filesystem::path(base) / kConfigDirectory;
     CreateDirectoryW(directory.c_str(), nullptr);
-    return directory + L"\\" + kConfigFile;
+    return (directory / kConfigFile).wstring();
 }
 
 bool LoadConfig(Config& config, const std::wstring& path)
