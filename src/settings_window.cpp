@@ -48,7 +48,8 @@ HWND CreateControl(const wchar_t* class_name, const wchar_t* text, DWORD style, 
 HWND CreateList(HWND parent, int id, HINSTANCE instance)
 {
     constexpr DWORD style =
-        LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_VSCROLL | WS_TABSTOP;
+        LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | LVS_SHAREIMAGELISTS |
+        WS_VSCROLL | WS_TABSTOP;
     return CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"", WS_CHILD | WS_VISIBLE | style, 0, 0,
                            0, 0, parent, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
                            instance, nullptr);

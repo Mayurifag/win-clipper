@@ -54,6 +54,7 @@ class CaptureAgent
                                       LONG child_id, DWORD event_thread, DWORD event_time);
 
     bool RegisterAgentWindow();
+    bool IsCaptureTarget(const OpenWindow& window) const;
     void Stop();
     void UpdateForegroundTarget();
     void UpdateClipRect();
@@ -65,9 +66,9 @@ class CaptureAgent
     HHOOK mouse_hook_ = nullptr;
     HWINEVENTHOOK event_hook_ = nullptr;
     HWND active_window_ = nullptr;
+    HWND moving_window_ = nullptr;
     RECT clip_rect_{};
     bool capture_enabled_ = true;
-    bool moving_active_window_ = false;
     bool stopping_ = false;
     Config config_;
     std::wstring config_path_;
