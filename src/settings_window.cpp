@@ -47,9 +47,8 @@ HWND CreateControl(const wchar_t* class_name, const wchar_t* text, DWORD style, 
 
 HWND CreateList(HWND parent, int id, HINSTANCE instance)
 {
-    constexpr DWORD style =
-        LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | LVS_SHAREIMAGELISTS |
-        WS_VSCROLL | WS_TABSTOP;
+    constexpr DWORD style = LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER |
+                            LVS_SHAREIMAGELISTS | WS_VSCROLL | WS_TABSTOP;
     return CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"", WS_CHILD | WS_VISIBLE | style, 0, 0,
                            0, 0, parent, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
                            instance, nullptr);
@@ -308,7 +307,7 @@ LRESULT CALLBACK SettingsWindow::WindowProc(HWND window, UINT message, WPARAM w_
         const HWND control = reinterpret_cast<HWND>(l_param);
         const COLORREF text_color =
             control == settings->status_label_ || control == settings->blacklist_label_ ? kComment
-            : control == settings->hotkey_label_                                        ? kCyan
+            : control == settings->hotkey_label_ ? kCyan
                                                  : kForeground;
         SetTextColor(device_context, text_color);
         SetBkColor(device_context, kBackground);
